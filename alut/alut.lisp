@@ -38,7 +38,9 @@
   (%alut:create-buffer-hello-world))
 
 (defun create-buffer-waveform (waveshape frequency phase duration)
-  (%alut:create-buffer-waveform waveshape frequency phase duration))
+  "Valid keywords for the waveshape are -- :sine :square :sawtooth :whitenoise :impulse"
+  (%alut:create-buffer-waveform (cffi:foreign-enum-value '%alut:waveform waveshape) 
+				frequency phase duration))
 
 ;;;
 ;;; Loading memory
@@ -55,7 +57,10 @@
                 (cffi:mem-ref size :int)
                 (cffi:mem-ref frequency '%al:ensure-float))
         (error ()
-          (error "There was an error loading ~A" filename)))))))
+          (error "There was an error loading ~A ~%(~A)" 
+		 filename
+                 (alut:get-error-string (al:get-error)))))))))
+
 
 (defun load-memory-from-file-image (data)
   (let ((length (length data)))
@@ -64,8 +69,8 @@
                                 (frequency '%al:ensure-float)
                                 (data-array :int length))
       (loop for i below length
-            do (setf (cffi:mem-aref data-array :int i)
-                     (elt data i)))
+	 do (setf (cffi:mem-aref data-array :int i)
+		  (elt data i)))
       (values-list
        (cons
         (%alut:load-memory-from-file-image data-array length format size
@@ -75,7 +80,8 @@
                   (cffi:mem-ref size :int)
                   (cffi:mem-ref frequency '%al::ensure-float))
           (error ()
-            (error "There was an error loading data"))))))))
+            (error "There was an error loading data!~%(~A)"
+                   (alut:get-error-string (al:get-error))))))))))
 
 (defun load-memory-hello-world ()
   (cffi:with-foreign-objects ((format '%al:enum)
@@ -89,22 +95,28 @@
                 (cffi:mem-ref size :int)
                 (cffi:mem-ref frequency '%al::ensure-float))
         (error ()
-          (error "There was an error loading memory!")))))))
+          (error "There was an error loading memory!~%(~A)"
+		 (alut:get-error-string (al:get-error)))))))))
 
 (defun load-memory-waveform (waveshape frequency phase duration)
+  "Valid keywords for the waveshape are -- :sine :square :sawtooth :whitenoise :impulse"
   (cffi:with-foreign-objects ((format '%al:enum)
                               (size :int)
                               (freq '%al:ensure-float))
     (values-list
      (cons
-      (%alut:load-memory-waveform waveshape frequency phase duration format
+      (%alut:load-memory-waveform (if (typep waveshape 'keyword) 
+				      (cffi:foreign-enum-value '%alut:waveform waveshape)
+				      waveshape) 
+				  frequency phase duration format
                                   size freq)
       (handler-case
           (list (cffi:mem-ref format '%al:enum)
                 (cffi:mem-ref size :int)
                 (cffi:mem-ref freq '%al::ensure-float))
         (error ()
-          (error "There was an error loading this waveform")))))))
+          (error "There was an error loading this waveform!~%(~A)"
+                 (alut:get-error-string (al:get-error)))))))))
 
 ;;;
 ;;; Misc
